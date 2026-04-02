@@ -54,12 +54,13 @@ export async function POST(
           const selected = options[optionIdx];
           const isCorrect = selected === currentQ.correctAnswer;
           const newScore = isCorrect ? student.score + 1 : student.score;
+          const nextIndex = qIdx + 1;
 
-          // Update student progress
+          // Update student progress in DB
           await prisma.student.update({
             where: { id: student.id },
             data: { 
-              currentQuestionIndex: qIdx + 1,
+              currentQuestionIndex: nextIndex,
               score: newScore
             }
           });
@@ -73,7 +74,8 @@ export async function POST(
           await sendTelegramMessage(BOT_TOKEN, chatId, `${feedback}${explanation}`);
           
           // Send next question or summary
-          await sendQuestion(bot, { ...student, currentQuestionIndex: qIdx + 1, score: newScore }, qIdx + 1, BOT_TOKEN);
+          // We pass the updated state manually to avoid a second DB look-up
+          await sendQuestion(bot, { ...student, currentQuestionIndex: nextIndex, score: newScore }, nextIndex, BOT_TOKEN);
         }
         await answerCallbackQuery(BOT_TOKEN, cb.id);
         return new NextResponse('OK', { status: 200 });

@@ -1,14 +1,24 @@
 import { Users, Search, Download, TrendingUp, Trophy } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { formatDistanceToNow } from 'date-fns';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 export default async function StudentsPage() {
-  const students = await prisma.student.findMany({
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) return <div className="text-white p-10">Unauthorized</div>;
+
+  const bot = await prisma.bot.findFirst({
+    where: { userId: session.user.id }
+  });
+
+  const students = bot ? await prisma.student.findMany({
+    where: { botId: bot.id },
     orderBy: { score: 'desc' },
     include: {
         bot: { select: { questions: { select: { id: true } } } }
     }
-  });
+  }) : [];
 
   return (
     <div className="p-10 max-w-7xl mx-auto space-y-12">
