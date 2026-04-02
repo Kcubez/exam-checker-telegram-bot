@@ -109,3 +109,31 @@ export async function answerCallbackQuery(token: string, callbackQueryId: string
     }),
   });
 }
+
+/**
+ * Set the webhook for the Telegram Bot
+ */
+export async function setTelegramWebhook(token: string, botId: string) {
+  const baseUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://exam-checker-telegram-bot.vercel.app';
+  const webhookUrl = `${baseUrl}/api/webhooks/telegram/${botId}`;
+
+  console.log(`Setting webhook for bot ${botId} to: ${webhookUrl}`);
+
+  const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url: webhookUrl,
+      allowed_updates: ['message', 'callback_query'],
+    }),
+  });
+
+  const data = await response.json();
+  if (!data.ok) {
+    console.error('Failed to set Telegram webhook:', data);
+    return false;
+  }
+
+  console.log('Telegram webhook set successfully:', data.description);
+  return true;
+}

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { setTelegramWebhook } from '@/lib/telegram';
 
 export async function getBotSettings() {
   try {
@@ -28,12 +29,12 @@ export async function updateBotSettings(data: {
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user) return { success: false, error: 'Unauthorized' };
 
-    const bot = await prisma.bot.findFirst({
+    let bot = await prisma.bot.findFirst({
         where: { userId: session.user.id }
     });
     
     if (bot) {
-      await prisma.bot.update({
+      bot = await prisma.bot.update({
         where: { id: bot.id },
         data: {
           name: data.name,
@@ -42,7 +43,7 @@ export async function updateBotSettings(data: {
         }
       });
     } else {
-      await prisma.bot.create({
+      bot = await prisma.bot.create({
         data: {
           name: data.name,
           telegramBotToken: data.telegramBotToken,
@@ -50,6 +51,11 @@ export async function updateBotSettings(data: {
           userId: session.user.id
         }
       });
+    }
+
+    // Set webhook if token exists
+    if (bot && bot.telegramBotToken) {
+      await setTelegramWebhook(bot.telegramBotToken, bot.id);
     }
 
     revalidatePath('/dashboard/settings');

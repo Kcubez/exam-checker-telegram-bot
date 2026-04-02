@@ -12,6 +12,8 @@ export async function POST(
   try {
     const { botId } = await params;
     const update = await request.json();
+    
+    console.log(`[Webhook] Received update for bot ${botId}:`, JSON.stringify(update, null, 2));
 
     // ── Handle Callback Queries (Button Clicks) ──
     if (update.callback_query) {
