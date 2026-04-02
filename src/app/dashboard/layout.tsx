@@ -1,11 +1,27 @@
+'use client';
+
 import { Bot, FileText, Settings, LogOut, LayoutDashboard, Users } from "lucide-react";
 import Link from "next/link";
+import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/login");
+        },
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#0F172A] flex">
       {/* Sidebar */}
@@ -52,7 +68,10 @@ export default function DashboardLayout({
         </nav>
 
         <div className="p-4 mt-auto">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-rose-400 hover:bg-rose-500/10 transition-all font-medium border border-transparent hover:border-rose-500/20">
+          <button 
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-rose-400 hover:bg-rose-500/10 transition-all font-medium border border-transparent hover:border-rose-500/20 cursor-pointer"
+          >
             <LogOut className="w-5 h-5" />
             <span>Sign Out</span>
           </button>
