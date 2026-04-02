@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendTelegramMessage, answerCallbackQuery } from '@/lib/telegram';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
 /**
  * Handle MCQ Flow without AI
  */
@@ -13,7 +11,6 @@ export async function POST(
 ) {
   try {
     const { botId } = await params;
-    if (!BOT_TOKEN) return new NextResponse('Missing Token', { status: 500 });
     const update = await request.json();
 
     // ── Handle Callback Queries (Button Clicks) ──
@@ -27,7 +24,8 @@ export async function POST(
         where: { id: botId },
         include: { questions: { orderBy: { createdAt: 'asc' } } }
       });
-      if (!bot) return new NextResponse('No Bot', { status: 404 });
+      if (!bot || !bot.telegramBotToken) return new NextResponse('No Bot / Token', { status: 404 });
+      const BOT_TOKEN = bot.telegramBotToken;
 
       // Identify student
       const student = await prisma.student.findUnique({
@@ -38,7 +36,7 @@ export async function POST(
       // ── Start Exam ──
       if (data === 'start_exam') {
         await answerCallbackQuery(BOT_TOKEN, cb.id, 'Exam started!');
-        await sendQuestion(bot, student, 0);
+        await sendQuestion(bot, student, 0, BOT_TOKEN);
         return new NextResponse('OK', { status: 200 });
       }
 
@@ -73,7 +71,7 @@ export async function POST(
           await sendTelegramMessage(BOT_TOKEN, chatId, `${feedback}${explanation}`);
           
           // Send next question or summary
-          await sendQuestion(bot, { ...student, currentQuestionIndex: qIdx + 1, score: newScore }, qIdx + 1);
+          await sendQuestion(bot, { ...student, currentQuestionIndex: qIdx + 1, score: newScore }, qIdx + 1, BOT_TOKEN);
         }
         await answerCallbackQuery(BOT_TOKEN, cb.id);
         return new NextResponse('OK', { status: 200 });
@@ -90,7 +88,8 @@ export async function POST(
       const bot = await prisma.bot.findUnique({
         where: { id: botId },
       });
-      if (!bot) return new NextResponse('OK', { status: 200 });
+      if (!bot || !bot.telegramBotToken) return new NextResponse('OK', { status: 200 });
+      const BOT_TOKEN = bot.telegramBotToken;
 
       if (text === '/start') {
         const userFrom = update.message.from;
@@ -147,13 +146,13 @@ interface StudentState {
   score: number;
 }
 
-async function sendQuestion(bot: BotWithQuestions, student: StudentState, index: number) {
+async function sendQuestion(bot: BotWithQuestions, student: StudentState, index: number, botToken: string) {
   const questions = bot.questions || [];
   const q = questions[index];
 
   if (!q) {
     const finalScore = `🎉 *Exam Completed!*\n\n📊 Total Score: *${student.score} / ${questions.length}*`;
-    await sendTelegramMessage(BOT_TOKEN!, student.telegramChatId, finalScore, {
+    await sendTelegramMessage(botToken, student.telegramChatId, finalScore, {
       inline_keyboard: [[{ text: '🔄 Try Again', callback_data: 'start_exam' }]]
     });
     return;
@@ -163,7 +162,7 @@ async function sendQuestion(bot: BotWithQuestions, student: StudentState, index:
   const keyboard = options.map((opt, oIdx) => [{ text: opt, callback_data: `ans:${index}:${oIdx}` }]);
 
   await sendTelegramMessage(
-    BOT_TOKEN!, 
+    botToken, 
     student.telegramChatId, 
     `📝 *Question ${index + 1}:*\n\n${q.questionText}`, 
     { inline_keyboard: keyboard }
