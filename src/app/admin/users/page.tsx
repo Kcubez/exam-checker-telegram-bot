@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Trash2, Edit2, Search, ShieldCheck, Mail, Calendar, Loader2, X, Lock, Eye, EyeOff, LogOut } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { getAdminUsers, deleteAdminUser, createAdminUser, updateAdminUser } from '@/app/actions/admin';
@@ -56,7 +55,10 @@ export default function UserManagementPage() {
     setIsLoading(false);
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const resetForm = () => {
     setFormName('');
